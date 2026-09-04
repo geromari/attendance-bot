@@ -3,7 +3,7 @@ from typing import Optional, List
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.models.user import User, Attendance, Schedule
-from config import config
+from ..config import config
 
 class AttendanceService:
     """Service for managing attendance records"""

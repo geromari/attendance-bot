@@ -4,7 +4,7 @@ from telegram.ext import (
     MessageHandler, ConversationHandler, filters
 )
 from telegram import Update
-from .config import config
+from ..config import config
 from database.db import init_db
 from bot.handlers.start import (
     start_command, receive_nickname, cancel, WAITING_NICKNAME,

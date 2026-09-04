@@ -4,7 +4,7 @@ from bot.services.attendance import attendance_service
 from bot.services.location import location_service
 from bot.keyboards.inline import keyboards
 from database.db import async_session
-from config import config
+from ..config import config
 
 
 def _fmt_duration(hours: float) -> str:

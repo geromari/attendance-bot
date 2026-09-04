@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 from bot.services.attendance import attendance_service
 from bot.keyboards.inline import keyboards
 from database.db import async_session
-from config import config
+from ..config import config
 
 WAITING_NICKNAME = 1
 
