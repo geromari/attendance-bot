@@ -6,7 +6,7 @@ from sqlalchemy import select, and_
 from database.db import async_session
 from bot.models.user import User, Attendance, Schedule
 from bot.services.attendance import attendance_service
-from ..config import config
+from bot.config import config
 import logging
 
 logger = logging.getLogger(__name__)

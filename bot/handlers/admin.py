@@ -5,7 +5,7 @@ from bot.services.attendance import attendance_service
 from bot.services.schedule import schedule_service
 from bot.keyboards.inline import keyboards
 from database.db import async_session
-from ..config import config
+from bot.config import config
 from datetime import time
 from bot.models.user import User
 

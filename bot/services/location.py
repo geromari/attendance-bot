@@ -1,5 +1,5 @@
 from geopy.distance import geodesic
-from ..config import config
+from bot.config import config
 
 class LocationService:
     """Service for location-based validation"""
