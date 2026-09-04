@@ -3,6 +3,25 @@ from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, ConversationHandler, filters
 )
+
+import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+
+# Render talab qiladigan portni aldab turish uchun kichik server
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is alive!")
+
+def run_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
+    server.serve_forever()
+
+# Veb-serverni alohida oqimda (thread) ishga tushiramiz
+threading.Thread(target=run_server, daemon=True).start()
 from telegram import Update
 from bot.config import config
 from database.db import init_db
