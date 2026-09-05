@@ -114,7 +114,7 @@ def main():
     # ── Admin schedule conversation ──────────────────────────────────────────
     schedule_handler = ConversationHandler(
         entry_points=[
-            CallbackQueryHandler(handle_weekly_schedule_employees_list, pattern='^(admin_weekly_schedule|admin_add_schedule)$'),
+            CallbackQueryHandler(handle_weekly_schedule_employees_list, pattern=r'^(admin_weekly_schedule|admin_add_schedule)$'),
             CallbackQueryHandler(handle_schedule_user_menu, pattern=r'^sched_user_\d+$'),
             CallbackQueryHandler(handle_sched_preset_prompt, pattern=r'^sched_preset_(5|6|7)_\d+$'),
             CallbackQueryHandler(handle_sched_text_prompt, pattern=r'^sched_text_\d+$'),
@@ -124,22 +124,40 @@ def main():
             WAITING_SCHED_NICKNAME: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_nickname),
                 CallbackQueryHandler(handle_schedule_user_menu, pattern=r'^sched_user_\d+$'),
+                CallbackQueryHandler(handle_schedule_cancel, pattern=r'^(cancel|cancel_schedule|sched_cancel_.*)$'),
+                CallbackQueryHandler(handle_admin_menu, pattern=r'^(admin_menu|back_to_main)$'),
             ],
             WAITING_SCHED_PRESET_TIME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_preset_time)
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_preset_time),
+                CallbackQueryHandler(handle_schedule_cancel, pattern=r'^(cancel|cancel_schedule|sched_cancel_.*)$'),
+                CallbackQueryHandler(handle_schedule_user_menu, pattern=r'^sched_user_\d+$'),
+                CallbackQueryHandler(handle_weekly_schedule_employees_list, pattern=r'^(admin_weekly_schedule|admin_add_schedule)$'),
+                CallbackQueryHandler(handle_admin_menu, pattern=r'^(admin_menu|back_to_main)$'),
             ],
             WAITING_SCHED_FULL_TEXT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_full_text)
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_full_text),
+                CallbackQueryHandler(handle_schedule_cancel, pattern=r'^(cancel|cancel_schedule|sched_cancel_.*)$'),
+                CallbackQueryHandler(handle_schedule_user_menu, pattern=r'^sched_user_\d+$'),
+                CallbackQueryHandler(handle_weekly_schedule_employees_list, pattern=r'^(admin_weekly_schedule|admin_add_schedule)$'),
+                CallbackQueryHandler(handle_admin_menu, pattern=r'^(admin_menu|back_to_main)$'),
             ],
             WAITING_SCHED_SINGLE_DAY_TIME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_single_day_time)
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_single_day_time),
+                CallbackQueryHandler(handle_schedule_cancel, pattern=r'^(cancel|cancel_schedule|sched_cancel_.*)$'),
+                CallbackQueryHandler(handle_sched_days_view, pattern=r'^sched_days_\d+$'),
+                CallbackQueryHandler(handle_schedule_user_menu, pattern=r'^sched_user_\d+$'),
+                CallbackQueryHandler(handle_admin_menu, pattern=r'^(admin_menu|back_to_main)$'),
             ],
         },
         fallbacks=[
-            CallbackQueryHandler(handle_schedule_cancel, pattern='^cancel$'),
-            CallbackQueryHandler(handle_weekly_schedule_employees_list, pattern='^admin_weekly_schedule$'),
-            CallbackQueryHandler(handle_admin_menu, pattern='^admin_menu$'),
+            CallbackQueryHandler(handle_schedule_cancel, pattern=r'^(cancel|cancel_schedule|sched_cancel_.*)$'),
+            CallbackQueryHandler(handle_schedule_user_menu, pattern=r'^sched_user_\d+$'),
+            CallbackQueryHandler(handle_sched_days_view, pattern=r'^sched_days_\d+$'),
+            CallbackQueryHandler(handle_weekly_schedule_employees_list, pattern=r'^(admin_weekly_schedule|admin_add_schedule)$'),
+            CallbackQueryHandler(handle_admin_menu, pattern=r'^(admin_menu|back_to_main)$'),
             CommandHandler('cancel', handle_schedule_cancel),
+            CommandHandler('admin', handle_admin_menu),
+            MessageHandler(filters.Regex(f'^({BTN_ADMIN}|{BTN_CHECKIN}|{BTN_CHECKOUT}|{BTN_PROFILE}|{BTN_LEADERBOARD}|{BTN_ANONYMOUS})$'), handle_admin_menu),
         ],
         per_message=False,
     )
@@ -174,7 +192,7 @@ def main():
     application.add_handler(MessageHandler(filters.LOCATION, handle_location))
 
     # ── Inline callback handlers ─────────────────────────────────────────────
-    application.add_handler(CallbackQueryHandler(handle_cancel, pattern='^cancel$'))
+    application.add_handler(CallbackQueryHandler(handle_cancel, pattern=r'^(cancel|cancel_schedule)$'))
     application.add_handler(CallbackQueryHandler(handle_approve, pattern=r'^approve_\d+$'))
     application.add_handler(CallbackQueryHandler(handle_reject,  pattern=r'^reject_\d+$'))
     application.add_handler(CallbackQueryHandler(handle_unblock_callback, pattern=r'^unblock_\d+$'))

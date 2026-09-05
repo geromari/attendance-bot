@@ -3,7 +3,10 @@ from telegram.ext import ContextTypes, ConversationHandler
 from sqlalchemy import select
 from bot.services.attendance import attendance_service
 from bot.services.schedule import schedule_service
-from bot.keyboards.inline import keyboards
+from bot.keyboards.inline import (
+    keyboards, BTN_CHECKIN, BTN_CHECKOUT, BTN_PROFILE,
+    BTN_LEADERBOARD, BTN_ANONYMOUS, BTN_ADMIN
+)
 from database.db import async_session
 from bot.config import config
 from datetime import time
@@ -27,6 +30,53 @@ DAY_NAMES = [
     'Payshanba (Thu)', 'Juma (Fri)', 'Shanba (Sat)', 'Yakshanba (Sun)'
 ]
 DAY_NAMES_SHORT = ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan', 'Yak']
+
+
+async def check_and_handle_intercept(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> bool:
+    """Check if user text is a navigation command, bottom reply button, or cancel word"""
+    clean = text.strip()
+    clean_lower = clean.lower()
+
+    if clean_lower in ['cancel', '/cancel', 'bekor', 'bekor qilish', 'ortga', 'chiqish', 'stop', 'exit']:
+        await handle_schedule_cancel(update, context)
+        return True
+
+    if clean == BTN_ADMIN or clean == '/admin':
+        context.user_data.clear()
+        await handle_admin_menu(update, context)
+        return True
+
+    if clean == BTN_CHECKIN:
+        context.user_data.clear()
+        from bot.handlers.checkin import handle_checkin
+        await handle_checkin(update, context)
+        return True
+
+    if clean == BTN_CHECKOUT:
+        context.user_data.clear()
+        from bot.handlers.checkin import handle_checkout
+        await handle_checkout(update, context)
+        return True
+
+    if clean == BTN_PROFILE:
+        context.user_data.clear()
+        from bot.handlers.profile import handle_profile
+        await handle_profile(update, context)
+        return True
+
+    if clean == BTN_LEADERBOARD:
+        context.user_data.clear()
+        from bot.handlers.leaderboard import handle_leaderboard
+        await handle_leaderboard(update, context)
+        return True
+
+    if clean == BTN_ANONYMOUS or clean == '/anonymous':
+        context.user_data.clear()
+        from bot.handlers.anonymous import start_anonymous_message
+        await start_anonymous_message(update, context)
+        return True
+
+    return False
 
 
 async def handle_admin_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -131,8 +181,11 @@ async def handle_weekly_schedule_employees_list(update: Update, context: Context
 
 async def receive_sched_nickname(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle nickname typed as text when selecting employee for schedule"""
-    nickname = update.message.text.strip()
+    text = update.message.text.strip()
+    if await check_and_handle_intercept(update, context, text):
+        return ConversationHandler.END
 
+    nickname = text
     async with async_session() as session:
         user = await attendance_service.get_user_by_nickname(session, nickname)
         if not user:
@@ -212,6 +265,9 @@ async def handle_sched_preset_prompt(update: Update, context: ContextTypes.DEFAU
 async def receive_sched_preset_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Receive time range and apply to preset days"""
     time_text = update.message.text.strip()
+    if await check_and_handle_intercept(update, context, time_text):
+        return ConversationHandler.END
+
     times = parse_time_range(time_text)
 
     user_id = context.user_data.get('sched_user_id')
@@ -220,7 +276,8 @@ async def receive_sched_preset_time(update: Update, context: ContextTypes.DEFAUL
     if not times:
         await update.message.reply_text(
             "❌ **Noto'g'ri vaqt formati!**\n\n"
-            "Iltimos, vaqtni `09:00 - 18:00` yoki `12:00-18:00` ko'rinishida kiriting:",
+            "Iltimos, vaqtni `09:00 - 18:00` yoki `12:00-18:00` ko'rinishida kiriting\n"
+            "*(yoki bekor qilish uchun pastdagi tugmani bosing)*:",
             parse_mode='Markdown',
             reply_markup=keyboards.schedule_cancel_action(user_id) if user_id else keyboards.cancel_action()
         )
@@ -306,6 +363,9 @@ async def handle_sched_text_prompt(update: Update, context: ContextTypes.DEFAULT
 async def receive_sched_full_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Parse multiline weekly schedule and save"""
     text = update.message.text.strip()
+    if await check_and_handle_intercept(update, context, text):
+        return ConversationHandler.END
+
     lines = [line.strip() for line in text.splitlines() if line.strip()]
 
     user_id = context.user_data.get('sched_user_id')
@@ -452,18 +512,20 @@ async def handle_sched_input_single_day(update: Update, context: ContextTypes.DE
         f"Iltimos, vaqtni yuboring:"
     )
 
-    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-    cancel_markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("⬅️ Orqaga", callback_data=f"sched_days_{user_id}")]
-    ])
-
-    await query.edit_message_text(text, parse_mode='Markdown', reply_markup=cancel_markup)
+    await query.edit_message_text(
+        text,
+        parse_mode='Markdown',
+        reply_markup=keyboards.schedule_single_day_cancel_action(user_id)
+    )
     return WAITING_SCHED_SINGLE_DAY_TIME
 
 
 async def receive_sched_single_day_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Receive time for a single day and save"""
     time_text = update.message.text.strip()
+    if await check_and_handle_intercept(update, context, time_text):
+        return ConversationHandler.END
+
     times = parse_time_range(time_text)
 
     user_id = context.user_data.get('sched_user_id')
@@ -471,7 +533,11 @@ async def receive_sched_single_day_time(update: Update, context: ContextTypes.DE
 
     if not times:
         await update.message.reply_text(
-            "❌ Noto'g'ri vaqt formati! Iltimos, `09:00 - 18:00` ko'rinishida kiriting:"
+            "❌ **Noto'g'ri vaqt formati!**\n\n"
+            "Iltimos, vaqtni `09:00 - 18:00` yoki `12:00-18:00` ko'rinishida kiriting\n"
+            "*(yoki bekor qilish uchun pastdagi tugmani bosing)*:",
+            parse_mode='Markdown',
+            reply_markup=keyboards.schedule_single_day_cancel_action(user_id) if user_id else keyboards.cancel_action()
         )
         return WAITING_SCHED_SINGLE_DAY_TIME
 
@@ -599,15 +665,25 @@ async def handle_setschedule_command(update: Update, context: ContextTypes.DEFAU
 async def handle_schedule_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancel schedule conversation"""
     context.user_data.clear()
+    text = "❌ **Jadval kiritish bekor qilindi.**\n\nQuyidagi amallardan birini tanlang:"
     if update.callback_query:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
-            "Jadval amali bekor qilindi.",
-            reply_markup=keyboards.back_to_main()
-        )
+        try:
+            await update.callback_query.edit_message_text(
+                text,
+                parse_mode='Markdown',
+                reply_markup=keyboards.admin_menu()
+            )
+        except Exception:
+            await update.callback_query.message.reply_text(
+                text,
+                parse_mode='Markdown',
+                reply_markup=keyboards.admin_menu()
+            )
     else:
         await update.message.reply_text(
-            "Jadval amali bekor qilindi.",
+            text,
+            parse_mode='Markdown',
             reply_markup=keyboards.admin_menu()
         )
     return ConversationHandler.END

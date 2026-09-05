@@ -130,7 +130,21 @@ class Keyboards:
     def schedule_cancel_action(user_id: int) -> InlineKeyboardMarkup:
         """Cancel schedule edit button"""
         keyboard = [
-            [InlineKeyboardButton("❌ Bekor qilish", callback_data=f"sched_user_{user_id}")]
+            [
+                InlineKeyboardButton("⬅️ Xodim menyusiga", callback_data=f"sched_user_{user_id}"),
+                InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel_schedule")
+            ]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def schedule_single_day_cancel_action(user_id: int) -> InlineKeyboardMarkup:
+        """Cancel single day schedule edit button"""
+        keyboard = [
+            [
+                InlineKeyboardButton("⬅️ Kunlar ro'yxatiga", callback_data=f"sched_days_{user_id}"),
+                InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel_schedule")
+            ]
         ]
         return InlineKeyboardMarkup(keyboard)
 
