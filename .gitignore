@@ -1,5 +1,41 @@
+# Environment variables & secrets
 .env
+.env.*
+!.env.example
+*.env
+
+# Python Virtual Environments
 venv/
+.venv/
+env/
+ENV/
+bot/bin/
+bot/lib/
+bot/lib64
+bot/pyvenv.cfg
+pyvenv.cfg
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
+*.py[cod]
+*$py.class
+*/__pycache__/
+bot/**/__pycache__/
+database/**/__pycache__/
+
+# Database files
 *.db
+*.sqlite
 *.sqlite3
+attendance.db
+
+# Logs
+*.log
+
+# OS & IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

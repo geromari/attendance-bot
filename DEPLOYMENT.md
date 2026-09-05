@@ -16,10 +16,10 @@ pip install -r requirements.txt
 Edit the `.env` file with your settings:
 
 ```env
-BOT_TOKEN=8607571872:AAHAzqZ_TZnvXBbY--LInEctA9-S7HvzKZo
-ADMIN_IDS=123456789,987654321  # Your Telegram user IDs
-WORK_LOCATION_LAT=40.7128      # Your work location latitude
-WORK_LOCATION_LNG=-74.0060     # Your work location longitude
+BOT_TOKEN=your_bot_token_here
+ADMIN_IDS=your_telegram_id_here
+WORK_LOCATION_LAT=41.338938      # Your work location latitude
+WORK_LOCATION_LNG=69.337057     # Your work location longitude
 MAX_DISTANCE_METERS=100        # Max distance from work location
 DAILY_HOUR_LIMIT=5             # Daily work hour limit
 DATABASE_URL=sqlite+aiosqlite:///./attendance.db

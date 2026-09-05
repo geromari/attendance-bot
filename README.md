@@ -63,6 +63,7 @@ attendance-bot/
 │   │   ├── user.py
 │   │   ├── attendance.py
 │   │   └── schedule.py
+│   ├── config.py            # Configuration
 │   └── utils/
 │       ├── __init__.py
 │       └── helpers.py
@@ -71,9 +72,11 @@ attendance-bot/
 │   ├── db.py                # Database connection
 │   └── migrations/
 │       └── 001_initial.sql
-├── config.py                # Configuration
 ├── requirements.txt
+├── setup.py
 ├── .env.example
+├── .gitignore
+├── DEPLOYMENT.md
 └── README.md
 ```
 
