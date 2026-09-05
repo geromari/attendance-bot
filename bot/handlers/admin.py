@@ -216,10 +216,16 @@ async def handle_view_employees(update: Update, context: ContextTypes.DEFAULT_TY
             name_info = f" ({user.full_name})" if user.full_name else ""
             text += f"• **{user.nickname}**{name_info}{admin_badge} — ID: `{user.telegram_id}`\n"
 
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        buttons = [
+            [InlineKeyboardButton("🗑 Remove Employee", callback_data="admin_remove_employee")],
+            [InlineKeyboardButton("⬅️ Back to Menu", callback_data="admin_menu")]
+        ]
+
         await query.edit_message_text(
             text,
             parse_mode='Markdown',
-            reply_markup=keyboards.back_to_main()
+            reply_markup=InlineKeyboardMarkup(buttons)
         )
 
 
@@ -363,3 +369,192 @@ async def handle_unblock_callback(update: Update, context: ContextTypes.DEFAULT_
         parse_mode='Markdown',
         reply_markup=keyboards.back_to_main()
     )
+
+
+async def handle_remove_employee_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show list of employees that can be removed"""
+    query = update.callback_query
+    await query.answer()
+
+    telegram_id = update.effective_user.id
+    if telegram_id not in config.ADMIN_IDS:
+        await query.answer("❌ Access denied!", show_alert=True)
+        return
+
+    async with async_session() as session:
+        result = await session.execute(select(User))
+        users = result.scalars().all()
+
+        removable_users = [u for u in users if not u.is_admin and u.telegram_id not in config.ADMIN_IDS]
+
+        if not removable_users:
+            await query.edit_message_text(
+                "🗑 **Remove Employee**\n\nNo removable employees found in the system.",
+                parse_mode='Markdown',
+                reply_markup=keyboards.back_to_main()
+            )
+            return
+
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        text = "🗑 **Remove Employee**\n\nSelect an employee to remove from the system:"
+        buttons = []
+        for user in removable_users:
+            label = f"❌ {user.nickname}"
+            if user.full_name:
+                label += f" ({user.full_name})"
+            buttons.append([InlineKeyboardButton(label, callback_data=f"remove_user_{user.id}")])
+
+        buttons.append([InlineKeyboardButton("⬅️ Back to Menu", callback_data="admin_menu")])
+
+        await query.edit_message_text(
+            text,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+
+
+async def handle_remove_employee_confirm_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Ask confirmation before removing an employee"""
+    query = update.callback_query
+    await query.answer()
+
+    telegram_id = update.effective_user.id
+    if telegram_id not in config.ADMIN_IDS:
+        await query.answer("❌ Access denied!", show_alert=True)
+        return
+
+    user_id = int(query.data.split('_')[-1])
+
+    async with async_session() as session:
+        user = await session.get(User, user_id)
+        if not user:
+            await query.edit_message_text(
+                "❌ Employee not found.",
+                reply_markup=keyboards.back_to_main()
+            )
+            return
+
+        if user.is_admin or user.telegram_id in config.ADMIN_IDS:
+            await query.answer("❌ Administrators cannot be removed!", show_alert=True)
+            return
+
+        text = (
+            f"⚠️ **Confirm Employee Removal**\n\n"
+            f"Are you sure you want to remove employee **{user.nickname}**?\n\n"
+            f"• Full name: {user.full_name or 'N/A'}\n"
+            f"• Telegram ID: `{user.telegram_id}`\n\n"
+            f"🚨 **Warning:** This will delete all their schedules, check-in history, and block access to the bot."
+        )
+
+        await query.edit_message_text(
+            text,
+            parse_mode='Markdown',
+            reply_markup=keyboards.remove_employee_confirm(user.id)
+        )
+
+
+async def handle_remove_employee_execute(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Execute removal of employee"""
+    query = update.callback_query
+    await query.answer()
+
+    telegram_id = update.effective_user.id
+    if telegram_id not in config.ADMIN_IDS:
+        await query.answer("❌ Access denied!", show_alert=True)
+        return
+
+    user_id = int(query.data.split('_')[-1])
+
+    async with async_session() as session:
+        user = await session.get(User, user_id)
+        if not user:
+            await query.edit_message_text(
+                "❌ Employee not found or already removed.",
+                reply_markup=keyboards.back_to_main()
+            )
+            return
+
+        if user.is_admin or user.telegram_id in config.ADMIN_IDS:
+            await query.answer("❌ Administrators cannot be removed!", show_alert=True)
+            return
+
+        target_telegram_id = user.telegram_id
+        nickname = user.nickname
+
+        await attendance_service.remove_user(session, user.id, mark_as_rejected=True)
+
+    # Notify employee if possible
+    try:
+        await context.bot.send_message(
+            chat_id=target_telegram_id,
+            text=(
+                "⚠️ **Notification**\n\n"
+                "You have been removed from the employee system by an administrator.\n"
+                "You no longer have access to attendance features."
+            ),
+            parse_mode='Markdown',
+            reply_markup=keyboards.remove()
+        )
+    except Exception:
+        pass
+
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🗑 Remove Another", callback_data="admin_remove_employee")],
+        [InlineKeyboardButton("⬅️ Back to Menu", callback_data="admin_menu")],
+    ])
+
+    await query.edit_message_text(
+        f"✅ Employee **{nickname}** (`{target_telegram_id}`) has been successfully removed and blocked.",
+        parse_mode='Markdown',
+        reply_markup=markup
+    )
+
+
+async def handle_remove_employee_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command /remove or /fire <nickname> to remove an employee"""
+    telegram_id = update.effective_user.id
+    if telegram_id not in config.ADMIN_IDS:
+        return
+
+    if not context.args:
+        await update.message.reply_text(
+            "Usage: `/remove <nickname>` or `/fire <nickname>`",
+            parse_mode='Markdown'
+        )
+        return
+
+    nickname = context.args[0].strip()
+
+    async with async_session() as session:
+        user = await attendance_service.get_user_by_nickname(session, nickname)
+        if not user:
+            await update.message.reply_text(f"❌ Employee with nickname '{nickname}' not found.")
+            return
+
+        if user.is_admin or user.telegram_id in config.ADMIN_IDS:
+            await update.message.reply_text("❌ Administrators cannot be removed.")
+            return
+
+        target_telegram_id = user.telegram_id
+        await attendance_service.remove_user(session, user.id, mark_as_rejected=True)
+
+    try:
+        await context.bot.send_message(
+            chat_id=target_telegram_id,
+            text=(
+                "⚠️ **Notification**\n\n"
+                "You have been removed from the employee system by an administrator.\n"
+                "You no longer have access to attendance features."
+            ),
+            parse_mode='Markdown',
+            reply_markup=keyboards.remove()
+        )
+    except Exception:
+        pass
+
+    await update.message.reply_text(
+        f"✅ Employee **{nickname}** (`{target_telegram_id}`) has been successfully removed and blocked.",
+        parse_mode='Markdown'
+    )
+

@@ -56,6 +56,8 @@ from bot.handlers.admin import (
     receive_day, receive_start_time, receive_end_time,
     handle_view_employees, handle_view_schedules, handle_view_rejected,
     handle_unreject_command, handle_unblock_callback,
+    handle_remove_employee_list, handle_remove_employee_confirm_prompt,
+    handle_remove_employee_execute, handle_remove_employee_command,
     WAITING_NICKNAME_FOR_SCHEDULE, WAITING_DAY, WAITING_START_TIME, WAITING_END_TIME
 )
 from bot.handlers.anonymous import (
@@ -141,6 +143,7 @@ def main():
 
     # ── Admin command handlers ───────────────────────────────────────────────
     application.add_handler(CommandHandler('unreject', handle_unreject_command))
+    application.add_handler(CommandHandler(['remove', 'fire'], handle_remove_employee_command))
 
     # ── Live location handler ────────────────────────────────────────────────
     application.add_handler(MessageHandler(filters.LOCATION, handle_location))
@@ -153,6 +156,9 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_location_type, pattern='^loc_(campus|rocketchat)$'))
     application.add_handler(CallbackQueryHandler(handle_admin_menu, pattern='^admin_menu$'))
     application.add_handler(CallbackQueryHandler(handle_view_employees, pattern='^admin_view_employees$'))
+    application.add_handler(CallbackQueryHandler(handle_remove_employee_list, pattern='^admin_remove_employee$'))
+    application.add_handler(CallbackQueryHandler(handle_remove_employee_confirm_prompt, pattern=r'^remove_user_\d+$'))
+    application.add_handler(CallbackQueryHandler(handle_remove_employee_execute, pattern=r'^confirm_rm_\d+$'))
     application.add_handler(CallbackQueryHandler(handle_view_schedules, pattern='^admin_view_schedules$'))
     application.add_handler(CallbackQueryHandler(handle_view_rejected, pattern='^admin_view_rejected$'))
 

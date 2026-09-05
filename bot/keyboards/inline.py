@@ -69,7 +69,17 @@ class Keyboards:
             [InlineKeyboardButton("➕ Add Schedule", callback_data="admin_add_schedule")],
             [InlineKeyboardButton("📋 All Schedules", callback_data="admin_view_schedules")],
             [InlineKeyboardButton("👥 All Employees", callback_data="admin_view_employees")],
+            [InlineKeyboardButton("🗑 Remove Employee", callback_data="admin_remove_employee")],
             [InlineKeyboardButton("🚫 Rejected Requests", callback_data="admin_view_rejected")],
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def remove_employee_confirm(user_id: int) -> InlineKeyboardMarkup:
+        """Confirmation keyboard before removing employee"""
+        keyboard = [
+            [InlineKeyboardButton("⚠️ Yes, Remove", callback_data=f"confirm_rm_{user_id}")],
+            [InlineKeyboardButton("⬅️ Cancel", callback_data="admin_remove_employee")]
         ]
         return InlineKeyboardMarkup(keyboard)
 

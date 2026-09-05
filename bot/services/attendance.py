@@ -114,6 +114,39 @@ class AttendanceService:
         return False
 
     @staticmethod
+    async def remove_user(
+        session: AsyncSession,
+        user_id: int,
+        mark_as_rejected: bool = True
+    ) -> Optional[User]:
+        """Remove an employee and optionally mark their registration request as rejected"""
+        user = await session.get(User, user_id)
+        if not user:
+            return None
+
+        telegram_id = user.telegram_id
+        nickname = user.nickname
+        full_name = user.full_name
+
+        await session.delete(user)
+
+        if mark_as_rejected:
+            req = await AttendanceService.get_registration_request(session, telegram_id)
+            if req:
+                req.status = 'rejected'
+            else:
+                req = RegistrationRequest(
+                    telegram_id=telegram_id,
+                    nickname=nickname,
+                    full_name=full_name,
+                    status='rejected'
+                )
+                session.add(req)
+
+        await session.commit()
+        return user
+
+    @staticmethod
     async def check_in(
         session: AsyncSession,
         user: User,
