@@ -1,10 +1,15 @@
 import logging
+import os
+import sys
+from pathlib import Path
+
+# Add project root to sys.path so both 'python bot/main.py' and 'python -m bot.main' work
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, ConversationHandler, filters
 )
-
-import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 
