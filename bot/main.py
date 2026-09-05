@@ -1,10 +1,14 @@
 import logging
 import os
 import sys
+import warnings
 from pathlib import Path
 
 # Add project root to sys.path so both 'python bot/main.py' and 'python -m bot.main' work
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from telegram.warnings import PTBUserWarning
+warnings.filterwarnings("ignore", category=PTBUserWarning)
 
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
@@ -17,8 +21,18 @@ import threading
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         self.wfile.write(b"Bot is alive!")
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+
+    def log_message(self, format, *args):
+        # Suppress routine health check access logs
+        pass
 
 def run_server():
     port = int(os.environ.get("PORT", 10000))
