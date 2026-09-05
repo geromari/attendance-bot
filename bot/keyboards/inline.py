@@ -66,11 +66,71 @@ class Keyboards:
     def admin_menu() -> InlineKeyboardMarkup:
         """Admin menu keyboard"""
         keyboard = [
-            [InlineKeyboardButton("➕ Add Schedule", callback_data="admin_add_schedule")],
-            [InlineKeyboardButton("📋 All Schedules", callback_data="admin_view_schedules")],
-            [InlineKeyboardButton("👥 All Employees", callback_data="admin_view_employees")],
-            [InlineKeyboardButton("🗑 Remove Employee", callback_data="admin_remove_employee")],
-            [InlineKeyboardButton("🚫 Rejected Requests", callback_data="admin_view_rejected")],
+            [InlineKeyboardButton("🗓 Haftalik ish jadvali", callback_data="admin_weekly_schedule")],
+            [InlineKeyboardButton("📋 Barcha jadvallar", callback_data="admin_view_schedules")],
+            [InlineKeyboardButton("👥 Barcha xodimlar", callback_data="admin_view_employees")],
+            [InlineKeyboardButton("🗑 Xodimni o'chirish", callback_data="admin_remove_employee")],
+            [InlineKeyboardButton("🚫 Rad etilgan so'rovlar", callback_data="admin_view_rejected")],
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def schedule_mode_menu(user_id: int) -> InlineKeyboardMarkup:
+        """Weekly schedule mode selection menu"""
+        keyboard = [
+            [InlineKeyboardButton("⚡️ Dushanba - Juma (Mon-Fri)", callback_data=f"sched_preset_5_{user_id}")],
+            [InlineKeyboardButton("⚡️ Dushanba - Shanba (Mon-Sat)", callback_data=f"sched_preset_6_{user_id}")],
+            [InlineKeyboardButton("⚡️ Har kuni (7 kun / All days)", callback_data=f"sched_preset_7_{user_id}")],
+            [InlineKeyboardButton("✍️ 7 kunni matn bilan kiritish", callback_data=f"sched_text_{user_id}")],
+            [InlineKeyboardButton("📅 Kunma-kun to'g'irlash", callback_data=f"sched_days_{user_id}")],
+            [InlineKeyboardButton("🗑 Barcha jadvallarni o'chirish", callback_data=f"sched_clear_{user_id}")],
+            [InlineKeyboardButton("⬅️ Xodimlar ro'yxatiga", callback_data="admin_weekly_schedule")],
+            [InlineKeyboardButton("🏠 Asosiy menyu", callback_data="admin_menu")],
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def schedule_days_menu(user_id: int, schedules_dict: dict) -> InlineKeyboardMarkup:
+        """Menu showing all 7 days with current times"""
+        days = [
+            ("Dush (Mon)", 0), ("Sesh (Tue)", 1),
+            ("Chor (Wed)", 2), ("Pay (Thu)", 3),
+            ("Jum (Fri)", 4), ("Shan (Sat)", 5),
+            ("Yak (Sun)", 6),
+        ]
+        keyboard = []
+        for name, day_num in days:
+            if day_num in schedules_dict:
+                s = schedules_dict[day_num]
+                status = f"{s.start_time.strftime('%H:%M')}-{s.end_time.strftime('%H:%M')}"
+            else:
+                status = "Dam olish"
+            keyboard.append([
+                InlineKeyboardButton(f"{name}: {status}", callback_data=f"sched_editday_{user_id}_{day_num}")
+            ])
+        keyboard.append([InlineKeyboardButton("⬅️ Orqaga", callback_data=f"sched_user_{user_id}")])
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def schedule_day_action(user_id: int, day_num: int, has_schedule: bool) -> InlineKeyboardMarkup:
+        """Action for a single day"""
+        buttons = [
+            [InlineKeyboardButton("⏱ Vaqtni kiritish", callback_data=f"sched_inputday_{user_id}_{day_num}")],
+        ]
+        if has_schedule:
+            buttons.append([
+                InlineKeyboardButton("🏖 Dam olish kuni qilish", callback_data=f"sched_dayoff_{user_id}_{day_num}")
+            ])
+        buttons.append([
+            InlineKeyboardButton("⬅️ Orqaga", callback_data=f"sched_days_{user_id}")
+        ])
+        return InlineKeyboardMarkup(buttons)
+
+    @staticmethod
+    def schedule_cancel_action(user_id: int) -> InlineKeyboardMarkup:
+        """Cancel schedule edit button"""
+        keyboard = [
+            [InlineKeyboardButton("❌ Bekor qilish", callback_data=f"sched_user_{user_id}")]
         ]
         return InlineKeyboardMarkup(keyboard)
 

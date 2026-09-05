@@ -1,10 +1,68 @@
+from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import ContextTypes
 from bot.services.attendance import attendance_service
 from bot.services.location import location_service
+from bot.services.schedule import schedule_service
 from bot.keyboards.inline import keyboards
 from database.db import async_session
 from bot.config import config
+from bot.utils.helpers import get_now
+
+
+async def validate_employee_schedule(session, user) -> tuple[bool, str]:
+    """
+    Validate if employee can check in based on their work schedule:
+    - Must have a schedule today (unless admin with no schedule)
+    - Can only check in starting from 10 minutes before start_time
+    - Allowed to check in after start_time as long as before end_time
+    - Not allowed to check in after end_time has passed
+    """
+    schedule = await schedule_service.get_today_schedule(session, user)
+
+    if not schedule:
+        if user.is_admin:
+            return True, ""  # Admins without schedule can check in anytime
+        return False, (
+            "❌ **Bugun siz uchun ish jadvali belgilanmagan.**\n\n"
+            "Check-in faqat tasdiqlangan ish jadvali bo'yicha amalga oshiriladi. "
+            "Iltimos, administrator bilan bog'laning."
+        )
+
+    now = get_now()
+    today = now.date()
+
+    # Calculate shift start and end datetimes
+    start_dt = datetime.combine(today, schedule.start_time)
+    end_dt = datetime.combine(today, schedule.end_time)
+
+    if schedule.end_time <= schedule.start_time:
+        # Overnight shift
+        end_dt += timedelta(days=1)
+
+    # 10 minutes before start time
+    earliest_checkin_dt = start_dt - timedelta(minutes=10)
+
+    start_str = schedule.start_time.strftime('%H:%M')
+    end_str = schedule.end_time.strftime('%H:%M')
+    earliest_str = earliest_checkin_dt.strftime('%H:%M')
+
+    if now < earliest_checkin_dt:
+        return False, (
+            f"⏳ **Check-in hali ochilmadi!**\n\n"
+            f"🕒 Ish vaqtingiz: **{start_str} — {end_str}**\n"
+            f"Check-in ish boshlanishidan 10 daqiqa oldin (**{earliest_str}** dan) ochiladi.\n\n"
+            f"Iltimos, belgilangan vaqtda check-in qiling."
+        )
+
+    if now > end_dt:
+        return False, (
+            f"❌ **Ish vaqti tugagan!**\n\n"
+            f"🕒 Sizning bugungi ish vaqtingiz: **{start_str} — {end_str}**\n"
+            f"Jadval bo'yicha ish vaqti tugaganidan so'ng check-in qilib bo'lmaydi."
+        )
+
+    return True, ""
 
 
 def _fmt_duration(hours: float) -> str:
@@ -50,6 +108,16 @@ async def handle_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 f"😴 You have reached your daily limit. Time to rest!\n\n"
                 f"Hours worked today: {_fmt_duration(today_hours)}",
+                reply_markup=keyboards.main_menu(is_admin=user.is_admin)
+            )
+            return
+
+        # Check work schedule
+        allowed, msg = await validate_employee_schedule(session, user)
+        if not allowed:
+            await update.message.reply_text(
+                msg,
+                parse_mode='Markdown',
                 reply_markup=keyboards.main_menu(is_admin=user.is_admin)
             )
             return
@@ -131,6 +199,12 @@ async def handle_location_type(update: Update, context: ContextTypes.DEFAULT_TYP
                 )
                 return
 
+            # Guard: re-check schedule
+            allowed, msg = await validate_employee_schedule(session, user)
+            if not allowed:
+                await query.edit_message_text(msg, parse_mode='Markdown')
+                return
+
             attendance = await attendance_service.check_in(session, user, None, None)
             today_hours = await attendance_service.get_today_hours(session, user)
             remaining = max(0.0, config.DAILY_HOUR_LIMIT - today_hours)
@@ -200,6 +274,17 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 f"😴 You have reached your daily limit. Time to rest!\n\n"
                 f"Hours worked today: {_fmt_duration(today_hours)}",
+                reply_markup=keyboards.main_menu(is_admin=user.is_admin)
+            )
+            context.user_data.pop('awaiting_live_location', None)
+            return
+
+        # Guard: re-check schedule
+        allowed, msg = await validate_employee_schedule(session, user)
+        if not allowed:
+            await update.message.reply_text(
+                msg,
+                parse_mode='Markdown',
                 reply_markup=keyboards.main_menu(is_admin=user.is_admin)
             )
             context.user_data.pop('awaiting_live_location', None)

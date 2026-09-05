@@ -1,7 +1,48 @@
 """Utility helper functions"""
 
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, time
+from typing import Optional, Tuple
+import re
+import pytz
+from bot.config import config
+
+
+def get_now() -> datetime:
+    """Get current datetime in configured timezone (default Asia/Tashkent) without tzinfo"""
+    tz_name = getattr(config, 'TIMEZONE', 'Asia/Tashkent')
+    try:
+        tz = pytz.timezone(tz_name)
+        return datetime.now(tz).replace(tzinfo=None)
+    except Exception:
+        return datetime.now()
+
+
+def parse_time_range(text: str) -> Optional[Tuple[time, time]]:
+    """Parse time range like '09:00 - 18:00', '9:00-18:00', '09:00 18:00'"""
+    # Remove leading numbering like '1.', '1)', '1 -', 'Dushanba:'
+    cleaned = re.sub(r'^\s*(?:[1-7]|[a-zA-Zа-яА-Я]+)[\.\)\:\-]\s*', '', text.strip())
+    # Match HH:MM ... HH:MM
+    matches = re.findall(r'(\d{1,2}):(\d{2})', cleaned)
+    if len(matches) >= 2:
+        try:
+            h1, m1 = int(matches[0][0]), int(matches[0][1])
+            h2, m2 = int(matches[1][0]), int(matches[1][1])
+            if 0 <= h1 < 24 and 0 <= m1 < 60 and 0 <= h2 < 24 and 0 <= m2 < 60:
+                return time(h1, m1), time(h2, m2)
+        except (ValueError, IndexError):
+            pass
+
+    # Fallback to single numbers: e.g. 9 - 18 or 9 18
+    matches2 = re.findall(r'\b(\d{1,2})\b', cleaned)
+    if len(matches2) >= 2:
+        try:
+            h1, h2 = int(matches2[0]), int(matches2[1])
+            if 0 <= h1 < 24 and 0 <= h2 < 24:
+                return time(h1, 0), time(h2, 0)
+        except (ValueError, IndexError):
+            pass
+
+    return None
 
 
 def format_duration(seconds: float) -> str:

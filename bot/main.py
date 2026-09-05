@@ -52,13 +52,22 @@ from bot.handlers.checkin import handle_checkin, handle_checkout, handle_locatio
 from bot.handlers.profile import handle_profile
 from bot.handlers.leaderboard import handle_leaderboard
 from bot.handlers.admin import (
-    handle_admin_menu, handle_add_schedule_start, receive_nickname_for_schedule,
-    receive_day, receive_start_time, receive_end_time,
+    handle_admin_menu,
+    handle_weekly_schedule_employees_list, receive_sched_nickname,
+    handle_schedule_user_menu,
+    handle_sched_preset_prompt, receive_sched_preset_time,
+    handle_sched_text_prompt, receive_sched_full_text,
+    handle_sched_days_view, handle_sched_edit_single_day,
+    handle_sched_dayoff, handle_sched_input_single_day,
+    receive_sched_single_day_time,
+    handle_sched_clear_confirm, handle_sched_clear_execute,
+    handle_setschedule_command, handle_schedule_cancel,
     handle_view_employees, handle_view_schedules, handle_view_rejected,
     handle_unreject_command, handle_unblock_callback,
     handle_remove_employee_list, handle_remove_employee_confirm_prompt,
     handle_remove_employee_execute, handle_remove_employee_command,
-    WAITING_NICKNAME_FOR_SCHEDULE, WAITING_DAY, WAITING_START_TIME, WAITING_END_TIME
+    WAITING_SCHED_NICKNAME, WAITING_SCHED_PRESET_TIME,
+    WAITING_SCHED_FULL_TEXT, WAITING_SCHED_SINGLE_DAY_TIME
 )
 from bot.handlers.anonymous import (
     start_anonymous_message, receive_anonymous_message, cancel_anonymous_message,
@@ -104,20 +113,35 @@ def main():
 
     # ── Admin schedule conversation ──────────────────────────────────────────
     schedule_handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(handle_add_schedule_start, pattern='^admin_add_schedule$')],
+        entry_points=[
+            CallbackQueryHandler(handle_weekly_schedule_employees_list, pattern='^(admin_weekly_schedule|admin_add_schedule)$'),
+            CallbackQueryHandler(handle_schedule_user_menu, pattern=r'^sched_user_\d+$'),
+            CallbackQueryHandler(handle_sched_preset_prompt, pattern=r'^sched_preset_(5|6|7)_\d+$'),
+            CallbackQueryHandler(handle_sched_text_prompt, pattern=r'^sched_text_\d+$'),
+            CallbackQueryHandler(handle_sched_input_single_day, pattern=r'^sched_inputday_\d+_\d+$'),
+        ],
         states={
-            WAITING_NICKNAME_FOR_SCHEDULE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_nickname_for_schedule)
+            WAITING_SCHED_NICKNAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_nickname),
+                CallbackQueryHandler(handle_schedule_user_menu, pattern=r'^sched_user_\d+$'),
             ],
-            WAITING_DAY: [CallbackQueryHandler(receive_day, pattern=r'^day_\d+$')],
-            WAITING_START_TIME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_start_time)
+            WAITING_SCHED_PRESET_TIME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_preset_time)
             ],
-            WAITING_END_TIME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_end_time)
-            ]
+            WAITING_SCHED_FULL_TEXT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_full_text)
+            ],
+            WAITING_SCHED_SINGLE_DAY_TIME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sched_single_day_time)
+            ],
         },
-        fallbacks=[CallbackQueryHandler(handle_cancel, pattern='^cancel$')]
+        fallbacks=[
+            CallbackQueryHandler(handle_schedule_cancel, pattern='^cancel$'),
+            CallbackQueryHandler(handle_weekly_schedule_employees_list, pattern='^admin_weekly_schedule$'),
+            CallbackQueryHandler(handle_admin_menu, pattern='^admin_menu$'),
+            CommandHandler('cancel', handle_schedule_cancel),
+        ],
+        per_message=False,
     )
 
     # ── Anonymous message conversation ───────────────────────────────────────
@@ -144,6 +168,7 @@ def main():
     # ── Admin command handlers ───────────────────────────────────────────────
     application.add_handler(CommandHandler('unreject', handle_unreject_command))
     application.add_handler(CommandHandler(['remove', 'fire'], handle_remove_employee_command))
+    application.add_handler(CommandHandler('setschedule', handle_setschedule_command))
 
     # ── Live location handler ────────────────────────────────────────────────
     application.add_handler(MessageHandler(filters.LOCATION, handle_location))
@@ -161,6 +186,15 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_remove_employee_execute, pattern=r'^confirm_rm_\d+$'))
     application.add_handler(CallbackQueryHandler(handle_view_schedules, pattern='^admin_view_schedules$'))
     application.add_handler(CallbackQueryHandler(handle_view_rejected, pattern='^admin_view_rejected$'))
+
+    # Weekly schedule non-text action callbacks
+    application.add_handler(CallbackQueryHandler(handle_weekly_schedule_employees_list, pattern='^(admin_weekly_schedule|admin_add_schedule)$'))
+    application.add_handler(CallbackQueryHandler(handle_schedule_user_menu, pattern=r'^sched_user_\d+$'))
+    application.add_handler(CallbackQueryHandler(handle_sched_days_view, pattern=r'^sched_days_\d+$'))
+    application.add_handler(CallbackQueryHandler(handle_sched_edit_single_day, pattern=r'^sched_editday_\d+_\d+$'))
+    application.add_handler(CallbackQueryHandler(handle_sched_dayoff, pattern=r'^sched_dayoff_\d+_\d+$'))
+    application.add_handler(CallbackQueryHandler(handle_sched_clear_confirm, pattern=r'^sched_clear_\d+$'))
+    application.add_handler(CallbackQueryHandler(handle_sched_clear_execute, pattern=r'^confirm_clear_sched_\d+$'))
 
     # ── Reply keyboard (bottom) text handlers ────────────────────────────────
     application.add_handler(MessageHandler(filters.Regex(f'^{BTN_CHECKIN}$'), handle_checkin))

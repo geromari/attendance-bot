@@ -11,5 +11,6 @@ class Config:
     MAX_DISTANCE_METERS = int(os.getenv('MAX_DISTANCE_METERS', '100'))
     DAILY_HOUR_LIMIT = int(os.getenv('DAILY_HOUR_LIMIT', '5'))
     DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite+aiosqlite:///./attendance.db')
+    TIMEZONE = os.getenv('TIMEZONE', 'Asia/Tashkent')
 
 config = Config()
