@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, time
 from typing import Optional, List
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from bot.models.user import User, Attendance, Schedule
+from bot.models.user import User, Attendance, Schedule, RegistrationRequest
 from bot.config import config
 
 class AttendanceService:
@@ -48,6 +48,70 @@ class AttendanceService:
             select(User).where(User.telegram_id == telegram_id)
         )
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_registration_request(session: AsyncSession, telegram_id: int) -> Optional[RegistrationRequest]:
+        """Get registration request by telegram ID"""
+        result = await session.execute(
+            select(RegistrationRequest).where(RegistrationRequest.telegram_id == telegram_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def create_or_update_registration_request(
+        session: AsyncSession,
+        telegram_id: int,
+        nickname: str,
+        full_name: Optional[str] = None,
+        status: str = 'pending'
+    ) -> RegistrationRequest:
+        """Create or update registration request"""
+        req = await AttendanceService.get_registration_request(session, telegram_id)
+        if req:
+            req.nickname = nickname
+            req.full_name = full_name
+            req.status = status
+        else:
+            req = RegistrationRequest(
+                telegram_id=telegram_id,
+                nickname=nickname,
+                full_name=full_name,
+                status=status
+            )
+            session.add(req)
+        await session.commit()
+        return req
+
+    @staticmethod
+    async def update_registration_status(
+        session: AsyncSession,
+        telegram_id: int,
+        status: str
+    ) -> Optional[RegistrationRequest]:
+        """Update registration request status"""
+        req = await AttendanceService.get_registration_request(session, telegram_id)
+        if req:
+            req.status = status
+            await session.commit()
+        return req
+
+    @staticmethod
+    async def get_all_rejected_requests(session: AsyncSession) -> List[RegistrationRequest]:
+        """Get all rejected registration requests"""
+        result = await session.execute(
+            select(RegistrationRequest).where(RegistrationRequest.status == 'rejected')
+        )
+        return result.scalars().all()
+
+    @staticmethod
+    async def delete_registration_request(session: AsyncSession, telegram_id: int) -> bool:
+        """Delete registration request (e.g. to allow retry)"""
+        req = await AttendanceService.get_registration_request(session, telegram_id)
+        if req:
+            await session.delete(req)
+            await session.commit()
+            return True
+        return False
 
     @staticmethod
     async def check_in(

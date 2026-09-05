@@ -13,7 +13,7 @@ from telegram.ext import (
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 
-# Render talab qiladigan portni aldab turish uchun kichik server
+# Web server for deployment platforms requiring a bound port (e.g. Render)
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -25,8 +25,8 @@ def run_server():
     server = HTTPServer(('0.0.0.0', port), SimpleHandler)
     server.serve_forever()
 
-# Veb-serverni alohida oqimda (thread) ishga tushiramiz
 threading.Thread(target=run_server, daemon=True).start()
+
 from telegram import Update
 from bot.config import config
 from database.db import init_db
@@ -40,12 +40,20 @@ from bot.handlers.leaderboard import handle_leaderboard
 from bot.handlers.admin import (
     handle_admin_menu, handle_add_schedule_start, receive_nickname_for_schedule,
     receive_day, receive_start_time, receive_end_time,
-    handle_view_employees, handle_view_schedules,
+    handle_view_employees, handle_view_schedules, handle_view_rejected,
+    handle_unreject_command, handle_unblock_callback,
     WAITING_NICKNAME_FOR_SCHEDULE, WAITING_DAY, WAITING_START_TIME, WAITING_END_TIME
+)
+from bot.handlers.anonymous import (
+    start_anonymous_message, receive_anonymous_message, cancel_anonymous_message,
+    WAITING_ANON_MESSAGE
 )
 from bot.handlers.callbacks import handle_cancel
 from bot.services.auto_checkout import auto_checkout_service
-from bot.keyboards.inline import BTN_CHECKIN, BTN_CHECKOUT, BTN_PROFILE, BTN_LEADERBOARD, BTN_ADMIN
+from bot.keyboards.inline import (
+    BTN_CHECKIN, BTN_CHECKOUT, BTN_PROFILE, BTN_LEADERBOARD,
+    BTN_ANONYMOUS, BTN_ADMIN
+)
 
 # Configure logging
 logging.basicConfig(
@@ -96,8 +104,29 @@ def main():
         fallbacks=[CallbackQueryHandler(handle_cancel, pattern='^cancel$')]
     )
 
+    # ── Anonymous message conversation ───────────────────────────────────────
+    anonymous_handler = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(f'^{BTN_ANONYMOUS}$'), start_anonymous_message),
+            CommandHandler('anonymous', start_anonymous_message),
+        ],
+        states={
+            WAITING_ANON_MESSAGE: [
+                MessageHandler((filters.TEXT | filters.PHOTO) & ~filters.COMMAND, receive_anonymous_message)
+            ]
+        },
+        fallbacks=[
+            CommandHandler('cancel', cancel_anonymous_message),
+            CallbackQueryHandler(cancel_anonymous_message, pattern='^cancel$')
+        ]
+    )
+
     application.add_handler(registration_handler)
     application.add_handler(schedule_handler)
+    application.add_handler(anonymous_handler)
+
+    # ── Admin command handlers ───────────────────────────────────────────────
+    application.add_handler(CommandHandler('unreject', handle_unreject_command))
 
     # ── Live location handler ────────────────────────────────────────────────
     application.add_handler(MessageHandler(filters.LOCATION, handle_location))
@@ -106,10 +135,12 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_cancel, pattern='^cancel$'))
     application.add_handler(CallbackQueryHandler(handle_approve, pattern=r'^approve_\d+$'))
     application.add_handler(CallbackQueryHandler(handle_reject,  pattern=r'^reject_\d+$'))
+    application.add_handler(CallbackQueryHandler(handle_unblock_callback, pattern=r'^unblock_\d+$'))
     application.add_handler(CallbackQueryHandler(handle_location_type, pattern='^loc_(campus|rocketchat)$'))
     application.add_handler(CallbackQueryHandler(handle_admin_menu, pattern='^admin_menu$'))
     application.add_handler(CallbackQueryHandler(handle_view_employees, pattern='^admin_view_employees$'))
     application.add_handler(CallbackQueryHandler(handle_view_schedules, pattern='^admin_view_schedules$'))
+    application.add_handler(CallbackQueryHandler(handle_view_rejected, pattern='^admin_view_rejected$'))
 
     # ── Reply keyboard (bottom) text handlers ────────────────────────────────
     application.add_handler(MessageHandler(filters.Regex(f'^{BTN_CHECKIN}$'), handle_checkin))

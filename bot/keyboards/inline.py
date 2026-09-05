@@ -1,11 +1,12 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
 # ─── Reply keyboard button labels ───────────────────────────────────────────
-BTN_CHECKIN    = "✅ Kirish"
-BTN_CHECKOUT   = "🚪 Chiqish"
-BTN_PROFILE    = "👤 Mening profilim"
-BTN_LEADERBOARD = "🏆 Reyting"
-BTN_ADMIN      = "🔧 Admin panel"
+BTN_CHECKIN     = "✅ Check-in"
+BTN_CHECKOUT    = "🚪 Check-out"
+BTN_PROFILE     = "👤 My Profile"
+BTN_LEADERBOARD = "🏆 Leaderboard"
+BTN_ANONYMOUS   = "📩 Anonymous Message"
+BTN_ADMIN       = "🔧 Admin Panel"
 
 
 class Keyboards:
@@ -18,6 +19,7 @@ class Keyboards:
         keyboard = [
             [KeyboardButton(BTN_CHECKIN), KeyboardButton(BTN_CHECKOUT)],
             [KeyboardButton(BTN_PROFILE), KeyboardButton(BTN_LEADERBOARD)],
+            [KeyboardButton(BTN_ANONYMOUS)],
         ]
         if is_admin:
             keyboard.append([KeyboardButton(BTN_ADMIN)])
@@ -34,10 +36,10 @@ class Keyboards:
         """Choose check-in location type"""
         keyboard = [
             [
-                InlineKeyboardButton("🏫 Kampus", callback_data="loc_campus"),
+                InlineKeyboardButton("🏫 Campus", callback_data="loc_campus"),
                 InlineKeyboardButton("💻 Rocketchat", callback_data="loc_rocketchat"),
             ],
-            [InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel")],
+            [InlineKeyboardButton("❌ Cancel", callback_data="cancel")],
         ]
         return InlineKeyboardMarkup(keyboard)
 
@@ -45,7 +47,7 @@ class Keyboards:
     def cancel_action() -> InlineKeyboardMarkup:
         """Cancel action button"""
         keyboard = [
-            [InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel")]
+            [InlineKeyboardButton("❌ Cancel", callback_data="cancel")]
         ]
         return InlineKeyboardMarkup(keyboard)
 
@@ -54,8 +56,8 @@ class Keyboards:
         """Admin approval keyboard for new employee requests"""
         keyboard = [
             [
-                InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"approve_{telegram_id}"),
-                InlineKeyboardButton("❌ Rad etish",  callback_data=f"reject_{telegram_id}"),
+                InlineKeyboardButton("✅ Approve", callback_data=f"approve_{telegram_id}"),
+                InlineKeyboardButton("❌ Reject",  callback_data=f"reject_{telegram_id}"),
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
@@ -64,9 +66,10 @@ class Keyboards:
     def admin_menu() -> InlineKeyboardMarkup:
         """Admin menu keyboard"""
         keyboard = [
-            [InlineKeyboardButton("➕ Jadval qo'shish", callback_data="admin_add_schedule")],
-            [InlineKeyboardButton("📋 Barcha jadvallar", callback_data="admin_view_schedules")],
-            [InlineKeyboardButton("👥 Barcha xodimlar", callback_data="admin_view_employees")],
+            [InlineKeyboardButton("➕ Add Schedule", callback_data="admin_add_schedule")],
+            [InlineKeyboardButton("📋 All Schedules", callback_data="admin_view_schedules")],
+            [InlineKeyboardButton("👥 All Employees", callback_data="admin_view_employees")],
+            [InlineKeyboardButton("🚫 Rejected Requests", callback_data="admin_view_rejected")],
         ]
         return InlineKeyboardMarkup(keyboard)
 
@@ -74,16 +77,33 @@ class Keyboards:
     def day_selection() -> InlineKeyboardMarkup:
         """Day selection keyboard for schedule"""
         days = [
-            ("Dushanba", "day_0"), ("Seshanba", "day_1"),
-            ("Chorshanba", "day_2"), ("Payshanba", "day_3"),
-            ("Juma", "day_4"), ("Shanba", "day_5"),
-            ("Yakshanba", "day_6"),
+            ("Monday", "day_0"), ("Tuesday", "day_1"),
+            ("Wednesday", "day_2"), ("Thursday", "day_3"),
+            ("Friday", "day_4"), ("Saturday", "day_5"),
+            ("Sunday", "day_6"),
         ]
         keyboard = [
             [InlineKeyboardButton(day, callback_data=data) for day, data in days[i:i+2]]
             for i in range(0, len(days), 2)
         ]
-        keyboard.append([InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel")])
+        keyboard.append([InlineKeyboardButton("❌ Cancel", callback_data="cancel")])
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def back_to_main() -> InlineKeyboardMarkup:
+        """Back to admin menu button"""
+        keyboard = [
+            [InlineKeyboardButton("⬅️ Back to Menu", callback_data="admin_menu")]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def unblock_user(telegram_id: int) -> InlineKeyboardMarkup:
+        """Unblock / allow retry for a rejected employee"""
+        keyboard = [
+            [InlineKeyboardButton("🔄 Reset & Allow Retry", callback_data=f"unblock_{telegram_id}")],
+            [InlineKeyboardButton("⬅️ Back", callback_data="admin_view_rejected")]
+        ]
         return InlineKeyboardMarkup(keyboard)
 
 

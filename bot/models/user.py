@@ -68,3 +68,18 @@ class Attendance(Base):
             delta = self.check_out_time - self.check_in_time
             return delta.total_seconds() / 3600
         return 0
+
+
+class RegistrationRequest(Base):
+    __tablename__ = 'registration_requests'
+
+    telegram_id = Column(BigInteger, primary_key=True)
+    nickname = Column(String(50), nullable=False)
+    full_name = Column(String(100))
+    status = Column(String(20), default='pending')  # 'pending', 'approved', 'rejected'
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<RegistrationRequest(telegram_id={self.telegram_id}, nickname='{self.nickname}', status='{self.status}')>"
+

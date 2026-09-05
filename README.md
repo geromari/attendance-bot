@@ -7,8 +7,11 @@ A Telegram bot for tracking employee check-ins/check-outs with location verifica
 ### Core Functionality
 - **Check-in/Check-out**: Location-based attendance tracking with 5-hour daily limit
 - **Auto Checkout**: Automatic checkout when time limit or schedule ends
-- **Nicknames**: Unique employee identifiers for confusion-free tracking
+- **Nicknames & Admin Approval**: Employees register with their nickname; admins review and approve/reject requests
+- **Access Control**: Rejected applicants are denied access to the bot
 - **Weekly Schedules**: Admin-managed work schedules per employee
+- **Anonymous Messaging**: Employees can send confidential messages/feedback directly to admins
+- **English Interface**: Complete bot communication in English
 
 ### Extension Buttons
 
@@ -17,10 +20,14 @@ A Telegram bot for tracking employee check-ins/check-outs with location verifica
 - Days worked per week
 - Specific work days displayed
 
-#### Honor Board
+#### Leaderboard
 - Competitive leaderboard
 - Total hours worked per employee
 - Ranking system
+
+#### Anonymous Message
+- Submit feedback or complaints completely anonymously
+- Admin receives messages without any user identity attached
 
 #### Location Verification
 - Real-time location check on check-in

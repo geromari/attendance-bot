@@ -4,19 +4,17 @@ from bot.services.attendance import attendance_service
 from bot.keyboards.inline import keyboards
 from database.db import async_session
 
-DAY_NAMES_UZ = ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba']
-
 
 def _fmt_duration(hours: float) -> str:
     total_minutes = int(round(hours * 60))
     h = total_minutes // 60
     m = total_minutes % 60
     if h and m:
-        return f"{h} soat {m} daqiqa"
+        return f"{h}h {m}m"
     elif h:
-        return f"{h} soat"
+        return f"{h}h"
     else:
-        return f"{m} daqiqa"
+        return f"{m}m"
 
 
 async def handle_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -28,7 +26,7 @@ async def handle_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not user:
             await update.message.reply_text(
-                "❌ Foydalanuvchi topilmadi. /start buyrug'i orqali ro'yxatdan o'ting.",
+                "❌ User not found. Please register by sending /start.",
                 reply_markup=keyboards.main_menu()
             )
             return
@@ -39,17 +37,17 @@ async def handle_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         days_str = (
             "\n".join([f"  • {day}" for day in days_worked])
-            if days_worked else "  • Hali ish kunlari yo'q"
+            if days_worked else "  • No working days yet"
         )
 
         profile_text = (
-            f"👤 **Mening profilim**\n\n"
-            f"📛 Taxallus: {user.nickname}\n"
-            f"{'👑 Admin' if user.is_admin else '👤 Xodim'}\n\n"
-            f"📊 **Bu haftaning statistikasi**\n\n"
-            f"⏱️ Jami vaqt: {_fmt_duration(week_hours)}\n"
-            f"📅 Ish kunlari: {days_count} kun\n"
-            f"📍 Kunlar:\n{days_str}\n"
+            f"👤 **My Profile**\n\n"
+            f"📛 Nickname: {user.nickname}\n"
+            f"{'👑 Admin' if user.is_admin else '👤 Employee'}\n\n"
+            f"📊 **This Week's Statistics**\n\n"
+            f"⏱️ Total time: {_fmt_duration(week_hours)}\n"
+            f"📅 Days worked: {days_count} days\n"
+            f"📍 Days:\n{days_str}\n"
         )
 
         await update.message.reply_text(

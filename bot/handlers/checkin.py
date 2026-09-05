@@ -8,22 +8,22 @@ from bot.config import config
 
 
 def _fmt_duration(hours: float) -> str:
-    """Format duration as 'X soat Y daqiqa'"""
+    """Format duration as 'Xh Ym'"""
     total_minutes = int(round(hours * 60))
     h = total_minutes // 60
     m = total_minutes % 60
     if h and m:
-        return f"{h} soat {m} daqiqa"
+        return f"{h}h {m}m"
     elif h:
-        return f"{h} soat"
+        return f"{h}h"
     else:
-        return f"{m} daqiqa"
+        return f"{m}m"
 
 
 # ─── Reply keyboard button handler ───────────────────────────────────────────
 
 async def handle_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Step 1: User pressed Kirish — ask which location type"""
+    """Step 1: User pressed Check-in — ask which location type"""
     telegram_id = update.effective_user.id
 
     async with async_session() as session:
@@ -31,7 +31,7 @@ async def handle_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not user:
             await update.message.reply_text(
-                "❌ Avval ro'yxatdan o'ting. /start buyrug'ini yuboring."
+                "❌ Please register first by sending /start."
             )
             return
 
@@ -39,8 +39,7 @@ async def handle_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active_checkin = await attendance_service.get_active_checkin(session, user)
         if active_checkin:
             await update.message.reply_text(
-                "⚠️ Siz allaqachon kirishni amalga oshirgansiz.\n"
-                "Avval chiqishni amalga oshiring.",
+                "⚠️ You are already checked in.\nPlease check out first.",
                 reply_markup=keyboards.main_menu(is_admin=user.is_admin)
             )
             return
@@ -49,15 +48,15 @@ async def handle_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         today_hours = await attendance_service.get_today_hours(session, user)
         if today_hours >= config.DAILY_HOUR_LIMIT:
             await update.message.reply_text(
-                f"😴 Sizning kunlik limitingiz tugadi, dam oling!\n\n"
-                f"Bugungi ishlangan vaqt: {_fmt_duration(today_hours)}",
+                f"😴 You have reached your daily limit. Time to rest!\n\n"
+                f"Hours worked today: {_fmt_duration(today_hours)}",
                 reply_markup=keyboards.main_menu(is_admin=user.is_admin)
             )
             return
 
     # Ask location type
     await update.message.reply_text(
-        "🏢 Qaysi joydan ishlayapsiz?",
+        "🏢 Where are you working from?",
         reply_markup=keyboards.location_type()
     )
 
@@ -71,14 +70,14 @@ async def handle_checkout(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not user:
             await update.message.reply_text(
-                "❌ Avval ro'yxatdan o'ting. /start buyrug'ini yuboring."
+                "❌ Please register first by sending /start."
             )
             return
 
         active_checkin = await attendance_service.get_active_checkin(session, user)
         if not active_checkin:
             await update.message.reply_text(
-                "⚠️ Faol kirish topilmadi.\nAvval kirishni amalga oshiring.",
+                "⚠️ No active check-in found.\nPlease check in first.",
                 reply_markup=keyboards.main_menu(is_admin=user.is_admin)
             )
             return
@@ -94,16 +93,16 @@ async def handle_checkout(update: Update, context: ContextTypes.DEFAULT_TYPE):
             co = attendance.check_out_time
 
             await update.message.reply_text(
-                f"✅ Chiqish muvaffaqiyatli! Yaxshi kun! 🌟\n\n"
-                f"🕐 Kirish: {ci.hour:02d}:{ci.minute:02d}\n"
-                f"🕐 Chiqish: {co.hour:02d}:{co.minute:02d}\n"
-                f"⏱️ Sessiya: {_fmt_duration(duration)}\n"
-                f"📊 Bugun jami: {_fmt_duration(today_hours)}",
+                f"✅ Checked out successfully! Have a great day! 🌟\n\n"
+                f"🕐 Check-in: {ci.hour:02d}:{ci.minute:02d}\n"
+                f"🕐 Check-out: {co.hour:02d}:{co.minute:02d}\n"
+                f"⏱️ Session: {_fmt_duration(duration)}\n"
+                f"📊 Today total: {_fmt_duration(today_hours)}",
                 reply_markup=keyboards.main_menu(is_admin=user.is_admin)
             )
         else:
             await update.message.reply_text(
-                "❌ Faol kirish topilmadi.",
+                "❌ No active check-in found.",
                 reply_markup=keyboards.main_menu(is_admin=user.is_admin)
             )
 
@@ -127,30 +126,30 @@ async def handle_location_type(update: Update, context: ContextTypes.DEFAULT_TYP
             today_hours = await attendance_service.get_today_hours(session, user)
             if today_hours >= config.DAILY_HOUR_LIMIT:
                 await query.edit_message_text(
-                    f"😴 Sizning kunlik limitingiz tugadi, dam oling!\n\n"
-                    f"Bugungi ishlangan vaqt: {_fmt_duration(today_hours)}"
+                    f"😴 You have reached your daily limit. Time to rest!\n\n"
+                    f"Hours worked today: {_fmt_duration(today_hours)}"
                 )
                 return
 
             attendance = await attendance_service.check_in(session, user, None, None)
             today_hours = await attendance_service.get_today_hours(session, user)
-            remaining = config.DAILY_HOUR_LIMIT - today_hours
+            remaining = max(0.0, config.DAILY_HOUR_LIMIT - today_hours)
             ci = attendance.check_in_time
 
             await query.edit_message_text(
-                f"✅ Kirish muvaffaqiyatli! Yaxshi smena! 🚀\n\n"
-                f"💻 Joylashuv: Rocketchat\n"
-                f"🕐 Kirish vaqti: {ci.hour:02d}:{ci.minute:02d}\n"
-                f"📊 Bugun ishlangan: {_fmt_duration(today_hours)}\n"
-                f"⏱️ Qolgan: {_fmt_duration(remaining)}"
+                f"✅ Check-in successful! Have a productive shift! 🚀\n\n"
+                f"💻 Location: Rocketchat\n"
+                f"🕐 Check-in time: {ci.hour:02d}:{ci.minute:02d}\n"
+                f"📊 Worked today: {_fmt_duration(today_hours)}\n"
+                f"⏱️ Remaining: {_fmt_duration(remaining)}"
             )
 
     elif choice == "loc_campus":
         # Ask for live location
         context.user_data['awaiting_live_location'] = True
         await query.edit_message_text(
-            "📍 Iltimos, **jonli joylashuv** (Live Location) yuboring.\n\n"
-            "Qo'shimcha (📎) → Joylashuv → \"Jonli joylashuvni ulashish\" ni tanlang.",
+            "📍 Please send your **Live Location**.\n\n"
+            "Tap Attach (📎) → Location → \"Share Live Location\".",
             parse_mode='Markdown',
             reply_markup=keyboards.cancel_action()
         )
@@ -163,8 +162,8 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Only accept live location (live_period is set)
     if not location.live_period:
         await update.message.reply_text(
-            "❌ Faqat **jonli joylashuv** (Live Location) qabul qilinadi.\n\n"
-            "Oddiy nuqta emas, \"Jonli joylashuvni ulashish\" ni tanlang.",
+            "❌ Only **Live Location** is accepted.\n\n"
+            "Please select \"Share Live Location\", not a static pin.",
             parse_mode='Markdown',
             reply_markup=keyboards.cancel_action()
         )
@@ -182,7 +181,7 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not user:
             await update.message.reply_text(
-                "❌ Foydalanuvchi topilmadi. /start buyrug'i orqali ro'yxatdan o'ting."
+                "❌ User not found. Please register using /start."
             )
             return
 
@@ -190,7 +189,7 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active = await attendance_service.get_active_checkin(session, user)
         if active:
             await update.message.reply_text(
-                "⚠️ Siz allaqachon kirishni amalga oshirgansiz.",
+                "⚠️ You are already checked in.",
                 reply_markup=keyboards.main_menu(is_admin=user.is_admin)
             )
             context.user_data.pop('awaiting_live_location', None)
@@ -199,8 +198,8 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
         today_hours = await attendance_service.get_today_hours(session, user)
         if today_hours >= config.DAILY_HOUR_LIMIT:
             await update.message.reply_text(
-                f"😴 Sizning kunlik limitingiz tugadi, dam oling!\n\n"
-                f"Bugungi ishlangan vaqt: {_fmt_duration(today_hours)}",
+                f"😴 You have reached your daily limit. Time to rest!\n\n"
+                f"Hours worked today: {_fmt_duration(today_hours)}",
                 reply_markup=keyboards.main_menu(is_admin=user.is_admin)
             )
             context.user_data.pop('awaiting_live_location', None)
@@ -211,10 +210,10 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not is_valid:
             await update.message.reply_text(
-                f"❌ Joylashuv tasdiqlanmadi!\n\n"
-                f"Siz kampusdan {location_service.format_distance(distance)} masofadasiz.\n"
-                f"Maksimal ruxsat: {config.MAX_DISTANCE_METERS} m\n\n"
-                f"Iltimos, kampusga yaqinroq boring va qayta urinib ko'ring.",
+                f"❌ Location not verified!\n\n"
+                f"You are {location_service.format_distance(distance)} away from campus.\n"
+                f"Maximum allowed distance: {config.MAX_DISTANCE_METERS} m\n\n"
+                f"Please get closer to campus and try again.",
                 reply_markup=keyboards.cancel_action()
             )
             return  # Keep awaiting_live_location so they can retry
@@ -222,15 +221,15 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Check in
         attendance = await attendance_service.check_in(session, user, user_lat, user_lng)
         today_hours = await attendance_service.get_today_hours(session, user)
-        remaining = config.DAILY_HOUR_LIMIT - today_hours
+        remaining = max(0.0, config.DAILY_HOUR_LIMIT - today_hours)
         ci = attendance.check_in_time
 
         await update.message.reply_text(
-            f"✅ Kirish muvaffaqiyatli! Yaxshi smena! 🚀\n\n"
-            f"🏫 Joylashuv: Kampus ({location_service.format_distance(distance)})\n"
-            f"🕐 Kirish vaqti: {ci.hour:02d}:{ci.minute:02d}\n"
-            f"📊 Bugun ishlangan: {_fmt_duration(today_hours)}\n"
-            f"⏱️ Qolgan: {_fmt_duration(remaining)}",
+            f"✅ Check-in successful! Have a productive shift! 🚀\n\n"
+            f"🏫 Location: Campus ({location_service.format_distance(distance)})\n"
+            f"🕐 Check-in time: {ci.hour:02d}:{ci.minute:02d}\n"
+            f"📊 Worked today: {_fmt_duration(today_hours)}\n"
+            f"⏱️ Remaining: {_fmt_duration(remaining)}",
             reply_markup=keyboards.main_menu(is_admin=user.is_admin)
         )
 

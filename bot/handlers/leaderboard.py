@@ -10,15 +10,15 @@ def _fmt_duration(hours: float) -> str:
     h = total_minutes // 60
     m = total_minutes % 60
     if h and m:
-        return f"{h} soat {m} daqiqa"
+        return f"{h}h {m}m"
     elif h:
-        return f"{h} soat"
+        return f"{h}h"
     else:
-        return f"{m} daqiqa"
+        return f"{m}m"
 
 
 async def handle_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle Honor Board button press"""
+    """Handle Leaderboard button press"""
     telegram_id = update.effective_user.id
 
     async with async_session() as session:
@@ -29,14 +29,14 @@ async def handle_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         if not leaderboard:
             await update.message.reply_text(
-                "🏆 **Reyting**\n\nHali hech kim ro'yxatdan o'tmagan.",
+                "🏆 **Leaderboard**\n\nNo employees registered yet.",
                 parse_mode='Markdown',
                 reply_markup=keyboards.main_menu(is_admin=is_admin)
             )
             return
 
         medals = ["🥇", "🥈", "🥉"]
-        text = "🏆 **Reyting**\n\nBu haftaning eng yaxshi xodimlari:\n\n"
+        text = "🏆 **Leaderboard**\n\nTop employees this week:\n\n"
 
         for idx, (u, hours) in enumerate(leaderboard[:10], 1):
             medal = medals[idx - 1] if idx <= 3 else f"{idx}."

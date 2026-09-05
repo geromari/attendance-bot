@@ -15,16 +15,15 @@ async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit
 async def init_db():
     """Initialize database with schema"""
     async with engine.begin() as conn:
-        # Read and execute the initial migration
-        migration_path = Path(__file__).parent / 'migrations' / '001_initial.sql'
-        if migration_path.exists():
-            with open(migration_path, 'r') as f:
-                schema = f.read()
-            # Split by semicolon and execute each statement
-            for statement in schema.split(';'):
-                statement = statement.strip()
-                if statement:
-                    await conn.execute(text(statement))
+        migrations_dir = Path(__file__).parent / 'migrations'
+        if migrations_dir.exists():
+            for sql_file in sorted(migrations_dir.glob('*.sql')):
+                with open(sql_file, 'r') as f:
+                    schema = f.read()
+                for statement in schema.split(';'):
+                    statement = statement.strip()
+                    if statement:
+                        await conn.execute(text(statement))
 
 async def get_session() -> AsyncSession:
     """Dependency to get database session"""
