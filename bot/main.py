@@ -1,5 +1,5 @@
 import os
-print("DEBUG TOKEN:", os.getenv("BOT_TOKEN"))
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 import logging
 import os
 import sys
