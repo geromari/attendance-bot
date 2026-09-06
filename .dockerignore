@@ -1,0 +1,32 @@
+# Git repository
+.git
+.gitignore
+
+# Python environments and byte code
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Local SQLite databases
+*.db
+*.sqlite3
+attendance.db
+
+# Documentation
+DEPLOYMENT.md
+README.md
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
