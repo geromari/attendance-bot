@@ -22,8 +22,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application files
 COPY . .
 
-# Expose port (Koyeb default is 8000; bot listens on PORT env or 10000)
-EXPOSE 8000
 
 # Run the bot
 CMD ["python", "bot/main.py"]
